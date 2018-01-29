@@ -1,7 +1,7 @@
 var date = new Date();
 // var now = date.getMinutes() * 1000 * 60 + date.getSeconds() * 1000 + date.getMilliseconds();
 
-var frametime = 16;
+var frametime = 32;
 
 var clock = {
     nextFrame: performance.now()
@@ -12,21 +12,26 @@ var config = {
     logVelocity: true
 }
 
+var jumpInterval = 1500;
+var nextJump = performance.now();
+var grounded = true;
+
 var dude = {
 
-    x: 200,
-    y: 200,
-    sx: 300,
-    sy: 300,
+    x: 400,
+    y: 500,
+    sx: 200,
+    sy: 200,
     img: new Image(),
     
     physics: {
-        vx: 25,
+        // vx: 25,
+        vx: 0,
         vy: 0,
     },
     collision: {
-        x: 300,
-        y: 300,
+        x: 200,
+        y: 200,
         physics: this.physics,
     },
     onCollide: function( other ) {
@@ -35,7 +40,8 @@ var dude = {
     },
     render: {
         animations: {
-            'running': [[0, 0, 300, 300], [300, 0, 300, 300]]
+            // 'running': [[0, 0, 300, 300], [300, 0, 300, 300]]
+            'running': [[0, 0, 300, 300]]
         },
         currentAnimation: 'running',
         currentFrame: 0,
@@ -73,18 +79,34 @@ function draw( time ) {
         // get input
 
         // scripting
+        if( time > nextJump && grounded ) {
+            console.log( true );
+            dude.physics.vy = -35;
+            grounded = false;
+        }
+
 
         // physics
         entities.forEach( function( entity ) {
             if( !entity.physics ) {
                 return;
             }
+            entity.physics.vy += 1.5;
             entity.x += entity.physics.vx;
             entity.y += entity.physics.vy;
+            if( entity.y >= 400 ) {
+                entity.y = 400;
+                entity.physics.vy = 0;
+                if( !grounded ) {
+                    grounded = true;
+                    nextJump = performance.now() + jumpInterval;
+                }
+            }
             if( config.logVelocity ) {
-                console.log( entity.id, 'x: ', entity.x, 'y: ', entity.y )
+                console.log( entity.id, 'x: ', entity.x, 'y: ', entity.y, 'vx: ', entity.physics.vx, 'vy: ', entity.physics.vy );
             }
         });
+
 
         // collision
         entities.forEach( function( entity, i ) {
@@ -109,6 +131,7 @@ function draw( time ) {
                 ctx.restore();
             }
         });
+
 
         // rendering
         entities.forEach( function( entity ) {
