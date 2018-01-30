@@ -9,8 +9,23 @@ var clock = {
 
 var config = {
     drawCollision: true,
-    logVelocity: true
+    logVelocity: false
 }
+
+var input = new Set();
+var keyups = new Set();
+
+
+document.addEventListener( 'keydown', (event) => {
+    // console.log( 'add', event.code );
+    input.add( event.code );
+
+});
+
+document.addEventListener( 'keyup', (event) => {
+    // console.log('remove', event.code);
+    keyups.add( event.code );
+});
 
 var jumpInterval = 1500;
 var nextJump = performance.now();
@@ -19,11 +34,11 @@ var grounded = true;
 var dude = {
 
     x: 400,
-    y: 500,
+    y: 100,
     sx: 200,
     sy: 200,
     img: new Image(),
-    
+    type: 'player',
     physics: {
         // vx: 25,
         vx: 0,
@@ -35,8 +50,11 @@ var dude = {
         physics: this.physics,
     },
     onCollide: function( other ) {
-        this.physics.vx *= -1;
-        this.physics.vy = -15;
+        if( other.type === 'terrain' ) {
+            // overlap x
+            this.physics.vx = 0;
+            this.physics.vy = 0;
+        }
     },
     render: {
         animations: {
@@ -51,6 +69,7 @@ var dude = {
 var wall = {
     x: 1100,
     y: 400,
+    type: 'terrain',
     collision: {
         x: 20,
         y: 900,
@@ -69,23 +88,67 @@ function init() {
 function draw( time ) {
     date = new Date();
 
-    if( time > clock.nextFrame ) {
-        clock.nextFrame = time + frametime;
 
-        var ctx = document.getElementById( 'canvas' ).getContext( '2d' );
-        ctx.save();
-        ctx.clearRect( 0, 0, 1280, 720 );
 
-        // get input
 
-        // scripting
-        if( time > nextJump && grounded ) {
-            console.log( true );
-            dude.physics.vy = -35;
-            grounded = false;
+    // get input
+    dude.physics.vx = 0;
+    input.forEach( key => {
+        switch (key) {
+            case 'KeyD':
+                dude.physics.vx += 10;
+                break;
+            case 'KeyA':
+                dude.physics.vx -= 10;
+                break;
+            case 'Space':
+                console.log( 'jump' );
+                if( grounded ) {
+                    dude.physics.vy = -35;
+                    grounded = false;
+                }
+            default:
+                break;
         }
+    });
+
+    keyups.forEach( key => {
+        input.delete( key );
+    });
+    keyups.clear();
 
 
+
+    // scripting
+    // if( time > nextJump && grounded ) {
+    //     console.log( true );
+    //     dude.physics.vy = -35;
+    //     grounded = false;
+    // }
+
+
+    
+    
+    
+    if (time > clock.nextFrame) {
+        // collision
+        entities.forEach(function (entity, i) {
+            if (!entity.collision) {
+                return;
+            }
+            entities.forEach(function (other, o) {
+                if (o === i || !other.collision) {
+                    return;
+                }
+                if (entity.x < other.x + other.collision.x &&
+                    entity.x + entity.collision.x > other.x &&
+                    entity.y < other.y + other.collision.y &&
+                    entity.y + entity.collision.y > other.y) {
+    
+                    entity.onCollide(other);
+                }
+            });
+        });
         // physics
         entities.forEach( function( entity ) {
             if( !entity.physics ) {
@@ -94,47 +157,29 @@ function draw( time ) {
             entity.physics.vy += 1.5;
             entity.x += entity.physics.vx;
             entity.y += entity.physics.vy;
-            if( entity.y >= 400 ) {
-                entity.y = 400;
-                entity.physics.vy = 0;
+            if( entity.y >= 500 ) {
+                entity.y = 500;
+                entity.physics.vy = Math.min( 0, entity.physics.vy );
                 if( !grounded ) {
                     grounded = true;
-                    nextJump = performance.now() + jumpInterval;
                 }
             }
             if( config.logVelocity ) {
                 console.log( entity.id, 'x: ', entity.x, 'y: ', entity.y, 'vx: ', entity.physics.vx, 'vy: ', entity.physics.vy );
             }
         });
-
-
-        // collision
-        entities.forEach( function( entity, i ) {
-            if( !entity.collision ) {
-                return;
-            }
-            entities.forEach( function( other, o ) {
-                if( o === i || !other.collision ) {
-                    return;
-                }
-                if( entity.x < other.x + other.collision.x &&
-                    entity.x + entity.collision.x > other.x &&
-                    entity.y < other.y + other.collision.y &&
-                    entity.y + entity.collision.y > other.y ) {
-                    
-                    entity.onCollide( other );
-                }
-            });
-            if( config.drawCollision ) {
+        var ctx = document.getElementById('canvas').getContext('2d');
+        ctx.save();
+        ctx.clearRect(0, 0, 1280, 720);
+        
+        clock.nextFrame = clock.nextFrame + frametime;
+        // rendering
+        entities.forEach( function( entity ) {
+            if( config.drawCollision && entity.collision ) {
                 ctx.strokeStyle = '#62f442';
                 ctx.strokeRect( entity.x, entity.y, entity.collision.x, entity.collision.y );
                 ctx.restore();
             }
-        });
-
-
-        // rendering
-        entities.forEach( function( entity ) {
             if( !entity.render ) {
                 return;
             }
