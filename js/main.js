@@ -29,7 +29,7 @@ document.addEventListener( 'keyup', (event) => {
 
 var jumpInterval = 1500;
 var nextJump = performance.now();
-var grounded = true;
+var grounded = false;
 
 var dude = {
 
@@ -45,15 +45,39 @@ var dude = {
         vy: 0,
     },
     collision: {
-        x: 200,
-        y: 200,
-        physics: this.physics,
+        x: 80,
+        y: 20,
+        sx: 160,
+        sy: 40
     },
     onCollide: function( other ) {
         if( other.type === 'terrain' ) {
             // overlap x
-            this.physics.vx = 0;
-            this.physics.vy = 0;
+            var overlap_x_r = this.x + this.collision.x - other.x;
+            var overlap_x_l = this.x - ( other.x + other.collision.x );
+            var overlap_x;
+            if( Math.abs( overlap_x_r ) <= Math.abs( overlap_x_l )) {
+                overlap_x = overlap_x_r;
+            } else {
+                overlap_x = overlap_x_l;
+            }
+            var overlap_y_r = this.y + this.collision.y - other.y;
+            var overlap_y_l = this.y - ( other.y + other.collision.y );
+            var overlap_y;
+            if (Math.abs(overlap_y_r) <= Math.abs(overlap_y_l)) {
+                overlap_y = overlap_y_r;
+            } else {
+                overlap_y = overlap_y_l;
+            }
+            console.log( overlap_x, overlap_y );
+            if( Math.abs( overlap_y ) >= Math.abs( overlap_x )) {
+                this.x -= overlap_x;
+            } else {
+                this.y -= overlap_y;
+                if( overlap_y > 0 ) {
+                    grounded = true;
+                }
+            }
         }
     },
     render: {
@@ -131,30 +155,14 @@ function draw( time ) {
     
     
     if (time > clock.nextFrame) {
-        // collision
-        entities.forEach(function (entity, i) {
-            if (!entity.collision) {
-                return;
-            }
-            entities.forEach(function (other, o) {
-                if (o === i || !other.collision) {
-                    return;
-                }
-                if (entity.x < other.x + other.collision.x &&
-                    entity.x + entity.collision.x > other.x &&
-                    entity.y < other.y + other.collision.y &&
-                    entity.y + entity.collision.y > other.y) {
-    
-                    entity.onCollide(other);
-                }
-            });
-        });
         // physics
         entities.forEach( function( entity ) {
             if( !entity.physics ) {
                 return;
             }
-            entity.physics.vy += 1.5;
+            if( !grounded ) {
+                entity.physics.vy += 1.5;
+            }
             entity.x += entity.physics.vx;
             entity.y += entity.physics.vy;
             if( entity.y >= 500 ) {
@@ -164,6 +172,25 @@ function draw( time ) {
                     grounded = true;
                 }
             }
+            
+            // collision
+            entities.forEach(function (entity, i) {
+                if (!entity.collision) {
+                    return;
+                }
+                entities.forEach(function (other, o) {
+                    if (o === i || !other.collision) {
+                        return;
+                    }
+                    if (entity.x < other.x + other.collision.x &&
+                        entity.x + entity.collision.x > other.x &&
+                        entity.y < other.y + other.collision.y &&
+                        entity.y + entity.collision.y > other.y) {
+        
+                        entity.onCollide(other);
+                    }
+                });
+            });
             if( config.logVelocity ) {
                 console.log( entity.id, 'x: ', entity.x, 'y: ', entity.y, 'vx: ', entity.physics.vx, 'vy: ', entity.physics.vy );
             }
